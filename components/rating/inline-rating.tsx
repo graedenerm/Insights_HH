@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import {
   ThumbsUp, ThumbsDown, Minus,
-  ChevronDown, ChevronUp, CheckCircle2, RotateCcw,
+  ChevronDown, ChevronUp, CheckCircle2, RotateCcw, Loader2,
 } from 'lucide-react'
 import { MetricRating, type MetricValue } from './metric-rating'
 import { submitEvaluation } from '@/actions/evaluations'
@@ -30,7 +30,7 @@ const impressionConfig = [
     selectedBg: '#059669',
     selectedBorder: '#059669',
     hoverClass: 'hover:border-emerald-400 hover:bg-emerald-50',
-    hoverText: '#059669',
+    hoverColor: '#059669',
   },
   {
     value: 'neutral' as const,
@@ -39,7 +39,7 @@ const impressionConfig = [
     selectedBg: '#52525b',
     selectedBorder: '#52525b',
     hoverClass: 'hover:border-zinc-400 hover:bg-zinc-50',
-    hoverText: '#52525b',
+    hoverColor: '#52525b',
   },
   {
     value: 'negative' as const,
@@ -48,13 +48,15 @@ const impressionConfig = [
     selectedBg: '#dc2626',
     selectedBorder: '#dc2626',
     hoverClass: 'hover:border-red-400 hover:bg-red-50',
-    hoverText: '#dc2626',
+    hoverColor: '#dc2626',
   },
 ]
 
 export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps) {
   const { evaluatorName } = useEvaluator()
 
+  // Phase: 'idle' | 'saving' | 'saved' | 'details'
+  const [phase, setPhase]         = useState<'idle' | 'saving' | 'saved' | 'details'>('idle')
   const [impression, setImpression] = useState<Impression | null>(null)
   const [showDetails, setShowDetails] = useState(false)
 
@@ -67,18 +69,64 @@ export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps)
   const [ratingReasoning, setRatingReasoning]     = useState<MetricValue | null>(null)
   const [ratingQuestions, setRatingQuestions]     = useState<MetricValue | null>(null)
 
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailSuccess, setDetailSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const resetForm = () => {
-    setImpression(null); setShowDetails(false)
+    setPhase('idle'); setImpression(null); setShowDetails(false)
     setComprehensibility(null); setRelevance(null); setPlausibility(null)
     setRatingTitle(null); setRatingDescription(null); setRatingHypotheses(null)
     setRatingReasoning(null); setRatingQuestions(null)
-    setError(null); setSuccess(false)
+    setDetailSuccess(false); setError(null)
   }
 
+  // ── Called immediately when user clicks a thumb ────────────────────────────
+  const handleImpressionClick = async (value: Impression) => {
+    if (phase === 'saving') return
+    setImpression(value)
+    setPhase('saving')
+    setError(null)
+
+    const result = await submitEvaluation({
+      itemType, itemId,
+      evaluatorName: evaluatorName || 'Anonym',
+      impression: value,
+    })
+
+    if (result.success) {
+      setPhase('saved')
+      setShowDetails(true)   // auto-expand details
+      onSuccess?.()
+    } else {
+      setPhase('idle')
+      setError(result.error ?? 'Fehler beim Speichern.')
+    }
+  }
+
+  // ── Optional detailed ratings submit ──────────────────────────────────────
+  const handleDetailSubmit = async () => {
+    if (!impression) return
+    setDetailLoading(true); setError(null)
+    const result = await submitEvaluation({
+      itemType, itemId,
+      evaluatorName: evaluatorName || 'Anonym',
+      impression,
+      comprehensibility: toDb(comprehensibility),
+      relevance: toDb(relevance),
+      plausibility: toDb(plausibility),
+      ratingTitle: toDb(ratingTitle),
+      ratingDescription: toDb(ratingDescription),
+      ratingHypotheses: itemType === 'insight' ? toDb(ratingHypotheses) : undefined,
+      ratingReasoning:  itemType === 'measure' ? toDb(ratingReasoning)  : undefined,
+      ratingQuestions:  itemType === 'measure' ? toDb(ratingQuestions)  : undefined,
+    })
+    setDetailLoading(false)
+    if (result.success) { setDetailSuccess(true); onSuccess?.() }
+    else setError(result.error ?? 'Fehler beim Speichern.')
+  }
+
+  // ── No name entered ────────────────────────────────────────────────────────
   if (!evaluatorName) {
     return (
       <div className="flex flex-col items-center gap-2 py-2 text-center">
@@ -89,43 +137,8 @@ export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps)
     )
   }
 
-  if (success) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-4">
-        <CheckCircle2 className="size-10" style={{ color: '#059669' }} />
-        <p className="text-sm font-semibold" style={{ color: '#059669' }}>Bewertung gespeichert!</p>
-        <button
-          onClick={resetForm}
-          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50"
-          style={{ borderColor: '#E5E5E5', color: '#737373' }}
-        >
-          <RotateCcw className="size-3" /> Erneut bewerten
-        </button>
-      </div>
-    )
-  }
-
-  const handleSubmit = async () => {
-    if (!impression) return
-    setLoading(true); setError(null)
-    const result = await submitEvaluation({
-      itemType, itemId, evaluatorName, impression,
-      comprehensibility: toDb(comprehensibility),
-      relevance: toDb(relevance),
-      plausibility: toDb(plausibility),
-      ratingTitle: toDb(ratingTitle),
-      ratingDescription: toDb(ratingDescription),
-      ratingHypotheses: itemType === 'insight' ? toDb(ratingHypotheses) : undefined,
-      ratingReasoning:  itemType === 'measure' ? toDb(ratingReasoning)  : undefined,
-      ratingQuestions:  itemType === 'measure' ? toDb(ratingQuestions)  : undefined,
-    })
-    setLoading(false)
-    if (result.success) { setSuccess(true); onSuccess?.() }
-    else setError(result.error ?? 'Fehler beim Speichern.')
-  }
-
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
 
       {/* ── Big impression buttons ── */}
       <div>
@@ -133,81 +146,112 @@ export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps)
           Gesamteindruck
         </p>
         <div className="flex flex-col gap-2">
-          {impressionConfig.map(({ value, icon: Icon, label, selectedBg, selectedBorder, hoverClass, hoverText }) => {
+          {impressionConfig.map(({ value, icon: Icon, label, selectedBg, selectedBorder, hoverClass, hoverColor }) => {
             const isSelected = impression === value
+            const isSaving   = phase === 'saving' && isSelected
             return (
               <button
                 key={value}
                 type="button"
-                onClick={() => setImpression(value)}
+                disabled={phase === 'saving'}
+                onClick={() => handleImpressionClick(value)}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-all',
-                  isSelected ? '' : cn('border-gray-200 bg-white text-gray-500', hoverClass),
+                  'flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-all disabled:opacity-60',
+                  isSelected ? '' : cn('border-gray-200 bg-white', hoverClass),
                 )}
-                style={isSelected ? {
-                  backgroundColor: selectedBg,
-                  borderColor: selectedBorder,
-                  color: '#ffffff',
-                } : { color: hoverText }}
+                style={isSelected
+                  ? { backgroundColor: selectedBg, borderColor: selectedBorder, color: '#fff' }
+                  : { color: hoverColor }}
               >
-                <Icon className="size-5 shrink-0" />
+                {isSaving
+                  ? <Loader2 className="size-5 shrink-0 animate-spin" />
+                  : <Icon className="size-5 shrink-0" />}
                 {label}
+                {/* Saved tick */}
+                {phase === 'saved' && isSelected && (
+                  <CheckCircle2 className="ml-auto size-4 opacity-80" />
+                )}
               </button>
             )
           })}
         </div>
+
+        {/* Saved confirmation */}
+        {phase === 'saved' && (
+          <p className="mt-2 text-xs font-medium" style={{ color: '#059669' }}>
+            ✓ Gespeichert – Details optional
+          </p>
+        )}
       </div>
 
-      {/* ── Optional detailed ratings ── */}
-      <button
-        onClick={() => setShowDetails((p) => !p)}
-        className="flex items-center gap-1.5 self-start rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50"
-        style={{ borderColor: '#E5E5E5', color: '#737373' }}
-      >
-        {showDetails ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-        {showDetails ? 'Details ausblenden' : 'Detailbewertung hinzufügen'}
-      </button>
+      {/* ── Optional detailed ratings (auto-expands after impression saved) ── */}
+      {phase === 'saved' && (
+        <>
+          <button
+            onClick={() => setShowDetails((p) => !p)}
+            className="flex items-center gap-1.5 self-start rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50"
+            style={{ borderColor: '#E5E5E5', color: '#737373' }}
+          >
+            {showDetails ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            {showDetails ? 'Details ausblenden' : 'Detailbewertung anzeigen'}
+          </button>
 
-      {showDetails && (
-        <div className="flex flex-col gap-3 rounded-xl border p-3" style={{ borderColor: '#E5E5E5', backgroundColor: '#FAFAFA' }}>
-          <MetricRating label="Verständlichkeit" description="Ist die Erklärung klar?" value={comprehensibility} onChange={setComprehensibility} />
-          <MetricRating label="Relevanz"          description="Ist es relevant & umsetzbar?" value={relevance}          onChange={setRelevance} />
-          <MetricRating label="Plausibilität"     description="Klingt es schlüssig?"         value={plausibility}      onChange={setPlausibility} />
+          {showDetails && !detailSuccess && (
+            <div className="flex flex-col gap-3 rounded-xl border p-3" style={{ borderColor: '#E5E5E5', backgroundColor: '#FAFAFA' }}>
+              <MetricRating label="Verständlichkeit" description="Ist die Erklärung klar?"        value={comprehensibility} onChange={setComprehensibility} />
+              <MetricRating label="Relevanz"          description="Relevant & umsetzbar?"          value={relevance}          onChange={setRelevance} />
+              <MetricRating label="Plausibilität"     description="Klingt es schlüssig?"           value={plausibility}      onChange={setPlausibility} />
 
-          <div className="border-t pt-3" style={{ borderColor: '#E5E5E5' }}>
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#AEAEAE' }}>Details</p>
-            <div className="flex flex-col gap-2.5">
-              <MetricRating label="Titel"       description="Ist der Titel treffend?"           value={ratingTitle}       onChange={setRatingTitle} />
-              <MetricRating label="Beschreibung" description="Ist die Beschreibung vollständig?" value={ratingDescription} onChange={setRatingDescription} />
-              {itemType === 'insight' && (
-                <MetricRating label="Hypothesen" description="Sind die Hypothesen plausibel?" value={ratingHypotheses} onChange={setRatingHypotheses} />
-              )}
-              {itemType === 'measure' && (
-                <>
-                  <MetricRating label="Begründung" description="Ist die Begründung nachvollziehbar?" value={ratingReasoning} onChange={setRatingReasoning} />
-                  <MetricRating label="Fragen"      description="Sind die Fragen relevant?"           value={ratingQuestions} onChange={setRatingQuestions} />
-                </>
-              )}
+              <div className="border-t pt-3" style={{ borderColor: '#E5E5E5' }}>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#AEAEAE' }}>Details</p>
+                <div className="flex flex-col gap-2.5">
+                  <MetricRating label="Titel"        description="Ist der Titel treffend?"            value={ratingTitle}       onChange={setRatingTitle} />
+                  <MetricRating label="Beschreibung" description="Beschreibung vollständig?"           value={ratingDescription} onChange={setRatingDescription} />
+                  {itemType === 'insight' && (
+                    <MetricRating label="Hypothesen" description="Hypothesen plausibel?"              value={ratingHypotheses}  onChange={setRatingHypotheses} />
+                  )}
+                  {itemType === 'measure' && (
+                    <>
+                      <MetricRating label="Begründung" description="Begründung nachvollziehbar?"      value={ratingReasoning}   onChange={setRatingReasoning} />
+                      <MetricRating label="Fragen"      description="Fragen relevant?"                value={ratingQuestions}   onChange={setRatingQuestions} />
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {error && <p className="text-xs" style={{ color: '#dc2626' }}>{error}</p>}
+
+              <button
+                onClick={handleDetailSubmit}
+                disabled={detailLoading}
+                className="w-full rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40"
+                style={{ backgroundColor: '#1A2FEE', color: '#ffffff' }}
+              >
+                {detailLoading ? 'Wird gespeichert…' : 'Detailbewertung absenden'}
+              </button>
             </div>
-          </div>
-        </div>
+          )}
+
+          {detailSuccess && showDetails && (
+            <p className="text-xs font-medium" style={{ color: '#059669' }}>✓ Detailbewertung gespeichert!</p>
+          )}
+        </>
       )}
 
-      {error && <p className="text-xs" style={{ color: '#dc2626' }}>{error}</p>}
+      {error && phase === 'idle' && (
+        <p className="text-xs" style={{ color: '#dc2626' }}>{error}</p>
+      )}
 
-      {/* ── Submit ── */}
-      <button
-        onClick={handleSubmit}
-        disabled={!impression || loading}
-        className="w-full rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40"
-        style={{
-          backgroundColor: impression ? '#1A2FEE' : '#E5E5E5',
-          color: impression ? '#ffffff' : '#AEAEAE',
-        }}
-      >
-        {loading ? 'Wird gespeichert…' : 'Bewertung absenden'}
-      </button>
-
+      {/* Reset link */}
+      {phase === 'saved' && (
+        <button
+          onClick={resetForm}
+          className="flex items-center gap-1.5 self-start text-xs transition-opacity hover:opacity-70"
+          style={{ color: '#AEAEAE' }}
+        >
+          <RotateCcw className="size-3" /> Erneut bewerten
+        </button>
+      )}
     </div>
   )
 }
