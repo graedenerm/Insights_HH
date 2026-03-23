@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button'
 import { MetricRating, type MetricValue } from './metric-rating'
 import { submitEvaluation } from '@/actions/evaluations'
 import { useEvaluator } from '@/lib/evaluator-context'
-import { useViewMode } from '@/lib/view-mode-context'
 import { cn } from '@/lib/utils'
 
 type Impression = 'positive' | 'negative' | 'neutral'
@@ -55,8 +54,7 @@ const impressionConfig = [
 
 export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps) {
   const { evaluatorName } = useEvaluator()
-  const { viewMode } = useViewMode()
-  const compact = viewMode === 'compact'
+  const compact = false
 
   const [impression, setImpression] = useState<Impression | null>(null)
   const [showDetails, setShowDetails] = useState(false)
@@ -95,7 +93,7 @@ export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps)
   if (!evaluatorName) {
     return (
       <p className="text-[11px] italic text-muted-foreground">
-        Set your name in the sidebar to rate.
+        Tragen Sie Ihren Namen oben ein, um zu bewerten.
       </p>
     )
   }

@@ -17,10 +17,11 @@ export function MeasureList({ measures, onEvaluationSubmitted }: MeasureListProp
 
   return (
     <div className="flex flex-col gap-3">
-      {measures.map((measure) => (
+      {measures.map((measure, i) => (
         <MeasureCard
           key={measure.id}
           measure={measure}
+          index={i}
           onEvaluationSubmitted={onEvaluationSubmitted}
         />
       ))}

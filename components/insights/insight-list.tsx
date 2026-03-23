@@ -19,10 +19,11 @@ export function InsightList({ insights, onEvaluationSubmitted }: InsightListProp
 
   return (
     <div className="flex flex-col gap-4">
-      {insights.map((insight) => (
+      {insights.map((insight, i) => (
         <InsightCard
           key={insight.id}
           insight={insight}
+          index={i}
           onEvaluationSubmitted={onEvaluationSubmitted}
         />
       ))}

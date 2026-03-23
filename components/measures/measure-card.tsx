@@ -1,343 +1,352 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Wrench,
+  Euro,
+  Clock,
+  Zap,
+  ArrowUpDown,
+  X,
+  CheckCircle2,
+  BarChart3,
+  FileText,
+  ChevronRight,
+  ThumbsUp,
+  ThumbsDown,
+  Minus,
+} from 'lucide-react'
 import { InlineRating } from '@/components/rating/inline-rating'
 import type { Measure, Evaluation } from '@/lib/types'
-import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Minus } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useViewMode } from '@/lib/view-mode-context'
 
-interface MeasureCardProps {
-  measure: Measure & { evaluations: Evaluation[] }
-  onEvaluationSubmitted?: () => void
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function effortStyle(level: string | null) {
+  switch (level) {
+    case 'LOW':    return { label: 'Geringer Aufwand',  color: '#059669', bg: 'rgba(5,150,105,0.08)' }
+    case 'MEDIUM': return { label: 'Mittlerer Aufwand', color: '#b45309', bg: 'rgba(234,179,8,0.08)' }
+    case 'HIGH':   return { label: 'Hoher Aufwand',     color: '#dc2626', bg: 'rgba(220,38,38,0.08)' }
+    default:       return level ? { label: level, color: '#737373', bg: 'rgba(0,0,0,0.04)' } : null
+  }
 }
 
-function formatEur(value: number | null): string {
-  if (value === null) return '—'
-  return value.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
+function categoryLabel(cat: string | null) {
+  if (!cat) return null
+  const map: Record<string, string> = {
+    OTHER: 'Sonstiges', PRESSURIZED_AIR: 'Druckluft',
+    HEATING: 'Heizung', COOLING: 'Kälte', LIGHTING: 'Beleuchtung',
+  }
+  return map[cat] ?? cat
 }
 
-function formatKwh(value: number | null): string {
-  if (value === null) return '—'
-  return value.toLocaleString('de-DE') + ' kWh'
+function formatEur(v: number | null) {
+  if (v === null) return '—'
+  return v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
 }
-
-const effortColors: Record<string, string> = {
-  LOW: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  MEDIUM: 'bg-amber-50 text-amber-700 border-amber-200',
-  HIGH: 'bg-red-50 text-red-700 border-red-200',
-}
-
-const investmentColors: Record<string, string> = {
-  LOW_INTENSITY: 'bg-blue-50 text-blue-700 border-blue-200',
-  MEDIUM_INTENSITY: 'bg-purple-50 text-purple-700 border-purple-200',
-  HIGH_INTENSITY: 'bg-orange-50 text-orange-700 border-orange-200',
+function formatKwh(v: number | null) {
+  if (v === null) return '—'
+  return v.toLocaleString('de-DE') + ' kWh'
 }
 
 function impressionSummary(evals: Evaluation[]) {
   const pos = evals.filter((e) => e.impression === 'positive').length
   const neu = evals.filter((e) => e.impression === 'neutral').length
   const neg = evals.filter((e) => e.impression === 'negative').length
-  const coreValues: number[] = []
-  for (const e of evals) {
-    if (e.comprehensibility !== null) coreValues.push(e.comprehensibility)
-    if (e.relevance !== null) coreValues.push(e.relevance)
-    if (e.plausibility !== null) coreValues.push(e.plausibility)
-  }
-  const avg =
-    coreValues.length > 0 ? coreValues.reduce((a, b) => a + b, 0) / coreValues.length : null
-  return { pos, neu, neg, avg, total: evals.length }
+  return { pos, neu, neg, total: evals.length }
 }
 
-function ImpressionBadges({
-  pos,
-  neu,
-  neg,
-  avg,
-  total,
+// ── Detail Modal ──────────────────────────────────────────────────────────────
+
+function MeasureDetailModal({
+  measure,
+  onClose,
+  onEvaluationSubmitted,
 }: {
-  pos: number
-  neu: number
-  neg: number
-  avg: number | null
-  total: number
+  measure: Measure & { evaluations: Evaluation[] }
+  onClose: () => void
+  onEvaluationSubmitted?: () => void
 }) {
-  if (total === 0) return <span className="text-xs text-muted-foreground">No evaluations yet</span>
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1">
-        <ThumbsUp className="size-3 text-emerald-600" />
-        <span className="text-xs font-medium tabular-nums">{pos}</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <Minus className="size-3 text-zinc-500" />
-        <span className="text-xs font-medium tabular-nums">{neu}</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <ThumbsDown className="size-3 text-red-500" />
-        <span className="text-xs font-medium tabular-nums">{neg}</span>
-      </div>
-      {avg !== null && (
-        <span className="text-xs text-muted-foreground">· {avg.toFixed(1)}/5</span>
-      )}
-    </div>
-  )
-}
-
-/** Collapsible raw-JSON section */
-function JsonSection({ title, value }: { title: string; value: unknown }) {
-  const [open, setOpen] = useState(false)
-  if (value === undefined || value === null) return null
-  const isEmpty = Array.isArray(value)
-    ? value.length === 0
-    : typeof value === 'object' && Object.keys(value as object).length === 0
-  if (isEmpty) return null
-  return (
-    <div className="overflow-hidden rounded border border-border text-xs">
-      <button
-        onClick={() => setOpen((p) => !p)}
-        className="flex w-full items-center justify-between bg-muted/50 px-3 py-1.5 text-left font-medium hover:bg-muted"
-      >
-        <span>{title}</span>
-        {open ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-      </button>
-      {open && (
-        <pre className="max-h-48 overflow-auto bg-background px-3 py-2 text-[10px] leading-relaxed text-muted-foreground">
-          {JSON.stringify(value, null, 2)}
-        </pre>
-      )}
-    </div>
-  )
-}
-
-function QuestionsSection({ items }: { items: unknown[] }) {
-  if (!items || items.length === 0) return null
-  const typed = items.filter(
-    (q): q is { question: string; suggestedAnswers?: { answer: string }[] } =>
-      typeof q === 'object' && q !== null && 'question' in q
-  )
-  if (typed.length === 0) return null
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Questions
-      </p>
-      <div className="flex flex-col gap-3">
-        {typed.map((q, i) => (
-          <div key={i} className="flex flex-col gap-1.5 rounded-md border border-border bg-muted/20 p-2.5">
-            <p className="text-xs font-medium text-foreground leading-snug">
-              {q.question}
-            </p>
-            {q.suggestedAnswers && q.suggestedAnswers.length > 0 && (
-              <ul className="flex flex-col gap-1 pl-1">
-                {q.suggestedAnswers.map((a, j) => (
-                  <li key={j} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-                    <span className="mt-[5px] size-1 shrink-0 rounded-full bg-muted-foreground/40" />
-                    {a.answer}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-export function MeasureCard({ measure, onEvaluationSubmitted }: MeasureCardProps) {
-  const { viewMode } = useViewMode()
-  const { pos, neu, neg, avg, total } = impressionSummary(measure.evaluations)
-
-  // Raw JSON fields
+  const effort = effortStyle(measure.effort_level)
+  const catLabel = categoryLabel(measure.category)
   const raw = measure.raw_json as Record<string, unknown>
   const reasoning = typeof raw?.reasoning === 'string' ? raw.reasoning : null
-  const questions = Array.isArray(raw?.questions) ? raw.questions as unknown[] : null
   const evidences = Array.isArray(raw?.evidences)
     ? (raw.evidences as unknown[]).filter((e): e is string => typeof e === 'string')
-    : null
+    : []
+  const questions = Array.isArray(raw?.questions)
+    ? (raw.questions as { question: string; suggestedAnswers?: { answer: string }[] }[]).filter(q => q.question)
+    : []
 
   return (
-    <Card size="sm" className="overflow-hidden border-l-4 border-l-purple-300">
-      {/* Two-column layout */}
-      <div className="flex min-h-0">
-        {/* ── Left: measure content ── */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          <CardHeader>
-            {/* Title */}
-            <CardTitle className="text-sm leading-snug">{measure.title}</CardTitle>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-4 py-8 md:py-16"
+      style={{ backgroundColor: 'rgba(0,9,91,0.6)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.97 }}
+        transition={{ duration: 0.2 }}
+        className="relative w-full max-w-2xl rounded-2xl border shadow-2xl"
+        style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between border-b px-6 py-5" style={{ borderColor: '#F0F0F0' }}>
+          <div className="flex-1 min-w-0 pr-4">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              {catLabel && (
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(0,0,0,0.04)', color: '#737373' }}>
+                  {catLabel}
+                </span>
+              )}
+              {effort && (
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: effort.bg, color: effort.color }}>
+                  {effort.label}
+                </span>
+              )}
+            </div>
+            <h2 className="text-base font-bold leading-snug" style={{ color: '#00095B' }}>
+              {measure.title}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
+          >
+            <X className="size-4" style={{ color: '#737373' }} />
+          </button>
+        </div>
 
-            {/* Short description always shown */}
+        <div className="px-6 py-5 flex flex-col gap-5">
+          {/* KPI Grid */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border px-3 py-3" style={{ borderColor: '#F0F0F0' }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Euro className="size-3" style={{ color: '#059669' }} />
+                <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: '#AEAEAE' }}>Einsparung/Jahr</span>
+              </div>
+              <p className="text-sm font-bold font-mono" style={{ color: '#059669' }}>
+                {formatEur(measure.yearly_savings_eur_from)} – {formatEur(measure.yearly_savings_eur_to)}
+              </p>
+            </div>
+            <div className="rounded-lg border px-3 py-3" style={{ borderColor: '#F0F0F0' }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Zap className="size-3" style={{ color: '#1A2FEE' }} />
+                <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: '#AEAEAE' }}>Energie/Jahr</span>
+              </div>
+              <p className="text-sm font-bold font-mono" style={{ color: '#1A2FEE' }}>
+                {formatKwh(measure.yearly_savings_kwh_from)} – {formatKwh(measure.yearly_savings_kwh_to)}
+              </p>
+            </div>
+            <div className="rounded-lg border px-3 py-3" style={{ borderColor: '#F0F0F0' }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <ArrowUpDown className="size-3" style={{ color: '#b45309' }} />
+                <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: '#AEAEAE' }}>Investition</span>
+              </div>
+              <p className="text-sm font-bold font-mono" style={{ color: '#00095B' }}>
+                {measure.investment_from === 0 && measure.investment_to === 0
+                  ? 'Keine'
+                  : `${formatEur(measure.investment_from)} – ${formatEur(measure.investment_to)}`}
+              </p>
+            </div>
+            <div className="rounded-lg border px-3 py-3" style={{ borderColor: '#F0F0F0' }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Clock className="size-3" style={{ color: '#737373' }} />
+                <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: '#AEAEAE' }}>Amortisation</span>
+              </div>
+              <p className="text-sm font-bold font-mono" style={{ color: '#00095B' }}>
+                {measure.amortisation_months !== null ? `${measure.amortisation_months} Mon.` : '—'}
+              </p>
+            </div>
+          </div>
+
+          {/* Description */}
+          {measure.description && (
+            <p className="text-[13px] leading-relaxed" style={{ color: '#444444' }}>
+              {measure.description}
+            </p>
+          )}
+
+          {/* Reasoning */}
+          {reasoning && (
+            <div className="rounded-lg border-l-2 px-4 py-3" style={{ backgroundColor: '#FAFAFA', borderLeftColor: '#1A2FEE' }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <FileText className="size-3.5" style={{ color: '#1A2FEE' }} />
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#1A2FEE' }}>Begründung</span>
+              </div>
+              <p className="text-[13px] leading-relaxed" style={{ color: '#444444' }}>{reasoning}</p>
+            </div>
+          )}
+
+          {/* Evidences */}
+          {evidences.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <BarChart3 className="size-3.5" style={{ color: '#059669' }} />
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#059669' }}>Datenpunkte</span>
+              </div>
+              <div className="rounded-lg border px-4 py-3" style={{ backgroundColor: '#FAFAFA', borderColor: '#F0F0F0' }}>
+                <ul className="flex flex-col gap-2">
+                  {evidences.map((ev, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 size-3 shrink-0" style={{ color: '#059669' }} />
+                      <span className="text-[12px] leading-relaxed" style={{ color: '#444444' }}>{ev}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Questions */}
+          {questions.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <FileText className="size-3.5" style={{ color: '#737373' }} />
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#737373' }}>Fragen</span>
+              </div>
+              <div className="flex flex-col gap-3">
+                {questions.map((q, i) => (
+                  <div key={i} className="rounded-lg border px-3 py-2.5" style={{ backgroundColor: '#FAFAFA', borderColor: '#F0F0F0' }}>
+                    <p className="text-xs font-semibold leading-snug mb-1.5" style={{ color: '#00095B' }}>{q.question}</p>
+                    {q.suggestedAnswers && q.suggestedAnswers.length > 0 && (
+                      <ul className="flex flex-col gap-1">
+                        {q.suggestedAnswers.map((a, j) => (
+                          <li key={j} className="flex items-start gap-1.5 text-[11px]" style={{ color: '#737373' }}>
+                            <span className="mt-[5px] size-1 shrink-0 rounded-full bg-gray-300" />
+                            {a.answer}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Rating */}
+          <div className="border-t pt-4" style={{ borderColor: '#F0F0F0' }}>
+            <div className="flex items-center gap-1.5 mb-3">
+              <FileText className="size-3.5" style={{ color: '#1A2FEE' }} />
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#1A2FEE' }}>Diese Maßnahme bewerten</span>
+            </div>
+            <div className="rounded-xl border p-4" style={{ borderColor: '#E5E5E5', backgroundColor: '#FAFAFA' }}>
+              <InlineRating itemType="measure" itemId={measure.id} onSuccess={onEvaluationSubmitted} />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// ── Measure Card (compact row) ────────────────────────────────────────────────
+
+interface MeasureCardProps {
+  measure: Measure & { evaluations: Evaluation[] }
+  index: number
+  onEvaluationSubmitted?: () => void
+}
+
+export function MeasureCard({ measure, index, onEvaluationSubmitted }: MeasureCardProps) {
+  const [modalOpen, setModalOpen] = useState(false)
+  const effort = effortStyle(measure.effort_level)
+  const catLabel = categoryLabel(measure.category)
+  const { pos, neu, neg, total } = impressionSummary(measure.evaluations)
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, delay: index * 0.03 }}
+        className="rounded-xl border overflow-hidden"
+        style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}
+      >
+        <button
+          onClick={() => setModalOpen(true)}
+          className="group flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-gray-50/50"
+        >
+          {/* Icon */}
+          <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: 'rgba(26,47,238,0.06)' }}>
+            <Wrench className="size-4" style={{ color: '#1A2FEE' }} />
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 mb-1">
+              {catLabel && (
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(0,0,0,0.04)', color: '#737373' }}>
+                  {catLabel}
+                </span>
+              )}
+              {effort && (
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: effort.bg, color: effort.color }}>
+                  {effort.label}
+                </span>
+              )}
+            </div>
+            <h4 className="text-sm font-bold leading-snug" style={{ color: '#00095B' }}>
+              {measure.title}
+            </h4>
             {measure.short_description && (
-              <p className={cn('text-xs text-muted-foreground', viewMode === 'compact' && 'line-clamp-2')}>
+              <p className="mt-1 text-xs leading-relaxed line-clamp-2" style={{ color: '#737373' }}>
                 {measure.short_description}
               </p>
             )}
-
-            {/* Badges */}
-            <div className="flex flex-wrap gap-1.5 pt-0.5">
-              {measure.effort_level && (
-                <span
-                  className={cn(
-                    'inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium',
-                    effortColors[measure.effort_level] ??
-                      'bg-zinc-50 text-zinc-600 border-zinc-200'
-                  )}
-                >
-                  {measure.effort_level.replace('_', ' ')} effort
-                </span>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              {(measure.yearly_savings_eur_from !== null || measure.yearly_savings_eur_to !== null) && (
+                <div className="flex items-center gap-1">
+                  <Euro className="size-3" style={{ color: '#059669' }} />
+                  <span className="text-xs font-semibold font-mono" style={{ color: '#059669' }}>
+                    {formatEur(measure.yearly_savings_eur_from)} – {formatEur(measure.yearly_savings_eur_to)}/a
+                  </span>
+                </div>
               )}
-              {measure.investment_type && (
-                <span
-                  className={cn(
-                    'inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium',
-                    investmentColors[measure.investment_type] ??
-                      'bg-zinc-50 text-zinc-600 border-zinc-200'
-                  )}
-                >
-                  {measure.investment_type.replace('_', ' ')}
-                </span>
-              )}
-              {measure.category && (
-                <Badge variant="outline" className="text-[10px]">
-                  {measure.category}
-                </Badge>
+              {measure.amortisation_months !== null && (
+                <div className="flex items-center gap-1">
+                  <Clock className="size-3" style={{ color: '#737373' }} />
+                  <span className="text-xs font-medium" style={{ color: '#737373' }}>
+                    {measure.amortisation_months} Mon. Amortisation
+                  </span>
+                </div>
               )}
             </div>
-          </CardHeader>
+          </div>
 
-          <CardContent className="flex flex-col gap-3">
-            {/* ── Compact: only eval summary ── */}
-            {viewMode === 'compact' && (
-              <div className="flex items-center gap-2">
-                <ImpressionBadges pos={pos} neu={neu} neg={neg} avg={avg} total={total} />
+          {/* Right: eval summary + arrow */}
+          <div className="shrink-0 flex flex-col items-end gap-2">
+            {total > 0 && (
+              <div className="flex items-center gap-1.5">
+                {pos > 0 && <span className="flex items-center gap-0.5 text-[10px] font-medium" style={{ color: '#059669' }}><ThumbsUp className="size-2.5" />{pos}</span>}
+                {neu > 0 && <span className="flex items-center gap-0.5 text-[10px] font-medium" style={{ color: '#737373' }}><Minus className="size-2.5" />{neu}</span>}
+                {neg > 0 && <span className="flex items-center gap-0.5 text-[10px] font-medium" style={{ color: '#dc2626' }}><ThumbsDown className="size-2.5" />{neg}</span>}
               </div>
             )}
-
-            {/* ── Detailed: all fields ── */}
-            {viewMode === 'detailed' && (
-              <>
-                {/* Financial metrics grid */}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                  {(measure.yearly_savings_eur_from !== null || measure.yearly_savings_eur_to !== null) && (
-                    <div>
-                      <span className="text-muted-foreground">Savings EUR/yr</span>
-                      <p className="font-medium text-emerald-700">
-                        {formatEur(measure.yearly_savings_eur_from)} – {formatEur(measure.yearly_savings_eur_to)}
-                      </p>
-                    </div>
-                  )}
-                  {(measure.yearly_savings_kwh_from !== null || measure.yearly_savings_kwh_to !== null) && (
-                    <div>
-                      <span className="text-muted-foreground">Savings kWh/yr</span>
-                      <p className="font-medium">
-                        {formatKwh(measure.yearly_savings_kwh_from)} – {formatKwh(measure.yearly_savings_kwh_to)}
-                      </p>
-                    </div>
-                  )}
-                  {(measure.investment_from !== null || measure.investment_to !== null) && (
-                    <div>
-                      <span className="text-muted-foreground">Investment</span>
-                      <p className="font-medium">
-                        {formatEur(measure.investment_from)} – {formatEur(measure.investment_to)}
-                      </p>
-                    </div>
-                  )}
-                  {measure.amortisation_months !== null && (
-                    <div>
-                      <span className="text-muted-foreground">Payback</span>
-                      <p className="font-medium">{measure.amortisation_months} months</p>
-                    </div>
-                  )}
-                  {measure.confidence !== null && (
-                    <div>
-                      <span className="text-muted-foreground">Confidence</span>
-                      <p className="font-medium">{measure.confidence.toFixed(0)}%</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Full description */}
-                {measure.description && (
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-                      Description
-                    </p>
-                    <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                      {measure.description}
-                    </p>
-                  </div>
-                )}
-
-                {/* Reasoning */}
-                {reasoning && (
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-                      Reasoning
-                    </p>
-                    <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                      {reasoning}
-                    </p>
-                  </div>
-                )}
-
-                {/* Evidences */}
-                {evidences && evidences.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
-                      Evidence
-                    </p>
-                    <ul className="flex flex-col gap-1.5">
-                      {evidences.map((e, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-foreground/80 leading-relaxed">
-                          <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
-                          {e}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Questions */}
-                {questions && <QuestionsSection items={questions} />}
-
-                {/* Original insight ID */}
-                {measure.original_insight_id && (
-                  <p className="text-[10px] font-mono text-muted-foreground">
-                    Insight: {measure.original_insight_id}
-                  </p>
-                )}
-
-                {/* Eval summary */}
-                <div className="flex items-center gap-2 border-t pt-2">
-                  <ImpressionBadges pos={pos} neu={neu} neg={neg} avg={avg} total={total} />
-                  {total > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      · {total} eval{total !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </div>
-
-        {/* ── Right: rating panel ── */}
-        <div className="w-64 shrink-0 border-l bg-muted/20">
-          <div className="flex flex-col gap-3 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Rate Measure
-            </p>
-            <InlineRating
-              itemType="measure"
-              itemId={measure.id}
-              onSuccess={onEvaluationSubmitted}
-            />
+            <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" style={{ color: '#AEAEAE' }} />
           </div>
-        </div>
-      </div>
-    </Card>
+        </button>
+      </motion.div>
+
+      <AnimatePresence>
+        {modalOpen && (
+          <MeasureDetailModal
+            measure={measure}
+            onClose={() => setModalOpen(false)}
+            onEvaluationSubmitted={() => {
+              setModalOpen(false)
+              onEvaluationSubmitted?.()
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </>
   )
 }
