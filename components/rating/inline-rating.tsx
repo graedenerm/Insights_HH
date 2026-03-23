@@ -2,15 +2,9 @@
 
 import { useState } from 'react'
 import {
-  ThumbsUp,
-  ThumbsDown,
-  Minus,
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
-  RotateCcw,
+  ThumbsUp, ThumbsDown, Minus,
+  ChevronDown, ChevronUp, CheckCircle2, RotateCcw,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { MetricRating, type MetricValue } from './metric-rating'
 import { submitEvaluation } from '@/actions/evaluations'
 import { useEvaluator } from '@/lib/evaluator-context'
@@ -32,85 +26,80 @@ const impressionConfig = [
   {
     value: 'positive' as const,
     icon: ThumbsUp,
-    label: 'Positive',
-    selected: 'bg-emerald-500 border-emerald-500 text-white',
-    hover: 'hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-600',
+    label: 'Positiv',
+    selectedBg: '#059669',
+    selectedBorder: '#059669',
+    hoverClass: 'hover:border-emerald-400 hover:bg-emerald-50',
+    hoverText: '#059669',
   },
   {
     value: 'neutral' as const,
     icon: Minus,
     label: 'Neutral',
-    selected: 'bg-zinc-500 border-zinc-500 text-white',
-    hover: 'hover:border-zinc-400 hover:bg-zinc-50 hover:text-zinc-600',
+    selectedBg: '#52525b',
+    selectedBorder: '#52525b',
+    hoverClass: 'hover:border-zinc-400 hover:bg-zinc-50',
+    hoverText: '#52525b',
   },
   {
     value: 'negative' as const,
     icon: ThumbsDown,
-    label: 'Negative',
-    selected: 'bg-red-500 border-red-500 text-white',
-    hover: 'hover:border-red-400 hover:bg-red-50 hover:text-red-600',
+    label: 'Negativ',
+    selectedBg: '#dc2626',
+    selectedBorder: '#dc2626',
+    hoverClass: 'hover:border-red-400 hover:bg-red-50',
+    hoverText: '#dc2626',
   },
 ]
 
 export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps) {
   const { evaluatorName } = useEvaluator()
-  const compact = false
 
   const [impression, setImpression] = useState<Impression | null>(null)
   const [showDetails, setShowDetails] = useState(false)
 
-  // Core ratings
   const [comprehensibility, setComprehensibility] = useState<MetricValue | null>(null)
-  const [relevance, setRelevance] = useState<MetricValue | null>(null)
-  const [plausibility, setPlausibility] = useState<MetricValue | null>(null)
-
-  // Detailed ratings
-  const [ratingTitle, setRatingTitle] = useState<MetricValue | null>(null)
+  const [relevance, setRelevance]                 = useState<MetricValue | null>(null)
+  const [plausibility, setPlausibility]           = useState<MetricValue | null>(null)
+  const [ratingTitle, setRatingTitle]             = useState<MetricValue | null>(null)
   const [ratingDescription, setRatingDescription] = useState<MetricValue | null>(null)
-  const [ratingHypotheses, setRatingHypotheses] = useState<MetricValue | null>(null)
-  const [ratingReasoning, setRatingReasoning] = useState<MetricValue | null>(null)
-  const [ratingQuestions, setRatingQuestions] = useState<MetricValue | null>(null)
+  const [ratingHypotheses, setRatingHypotheses]   = useState<MetricValue | null>(null)
+  const [ratingReasoning, setRatingReasoning]     = useState<MetricValue | null>(null)
+  const [ratingQuestions, setRatingQuestions]     = useState<MetricValue | null>(null)
 
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]     = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
   const resetForm = () => {
-    setImpression(null)
-    setShowDetails(false)
-    setComprehensibility(null)
-    setRelevance(null)
-    setPlausibility(null)
-    setRatingTitle(null)
-    setRatingDescription(null)
-    setRatingHypotheses(null)
-    setRatingReasoning(null)
-    setRatingQuestions(null)
-    setError(null)
-    setSuccess(false)
+    setImpression(null); setShowDetails(false)
+    setComprehensibility(null); setRelevance(null); setPlausibility(null)
+    setRatingTitle(null); setRatingDescription(null); setRatingHypotheses(null)
+    setRatingReasoning(null); setRatingQuestions(null)
+    setError(null); setSuccess(false)
   }
 
   if (!evaluatorName) {
     return (
-      <p className="text-[11px] italic text-muted-foreground">
-        Tragen Sie Ihren Namen oben ein, um zu bewerten.
-      </p>
+      <div className="flex flex-col items-center gap-2 py-2 text-center">
+        <p className="text-xs leading-snug" style={{ color: '#AEAEAE' }}>
+          Tragen Sie Ihren Namen oben ein,<br />um zu bewerten.
+        </p>
+      </div>
     )
   }
 
   if (success) {
     return (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-1.5 text-xs text-emerald-600">
-          <CheckCircle2 className="size-3.5 shrink-0" />
-          Submitted
-        </div>
+      <div className="flex flex-col items-center gap-3 py-4">
+        <CheckCircle2 className="size-10" style={{ color: '#059669' }} />
+        <p className="text-sm font-semibold" style={{ color: '#059669' }}>Bewertung gespeichert!</p>
         <button
-          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
           onClick={resetForm}
+          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50"
+          style={{ borderColor: '#E5E5E5', color: '#737373' }}
         >
-          <RotateCcw className="size-3" />
-          Rate again
+          <RotateCcw className="size-3" /> Erneut bewerten
         </button>
       </div>
     )
@@ -118,152 +107,107 @@ export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps)
 
   const handleSubmit = async () => {
     if (!impression) return
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     const result = await submitEvaluation({
-      itemType,
-      itemId,
-      evaluatorName,
-      impression,
+      itemType, itemId, evaluatorName, impression,
       comprehensibility: toDb(comprehensibility),
       relevance: toDb(relevance),
       plausibility: toDb(plausibility),
       ratingTitle: toDb(ratingTitle),
       ratingDescription: toDb(ratingDescription),
       ratingHypotheses: itemType === 'insight' ? toDb(ratingHypotheses) : undefined,
-      ratingReasoning: itemType === 'measure' ? toDb(ratingReasoning) : undefined,
-      ratingQuestions: itemType === 'measure' ? toDb(ratingQuestions) : undefined,
+      ratingReasoning:  itemType === 'measure' ? toDb(ratingReasoning)  : undefined,
+      ratingQuestions:  itemType === 'measure' ? toDb(ratingQuestions)  : undefined,
     })
     setLoading(false)
-    if (result.success) {
-      setSuccess(true)
-      onSuccess?.()
-    } else {
-      setError(result.error ?? 'Submission failed.')
-    }
+    if (result.success) { setSuccess(true); onSuccess?.() }
+    else setError(result.error ?? 'Fehler beim Speichern.')
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* ── Overall impression ── */}
+    <div className="flex flex-col gap-4">
+
+      {/* ── Big impression buttons ── */}
       <div>
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Overall Impression
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#AEAEAE' }}>
+          Gesamteindruck
         </p>
-        <div className="flex gap-1.5">
-          {impressionConfig.map(({ value, icon: Icon, label, selected, hover }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setImpression(value)}
-              className={cn(
-                'flex flex-1 items-center justify-center gap-1 rounded border py-1.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                impression === value
-                  ? selected
-                  : cn('border-border bg-background text-muted-foreground', hover)
-              )}
-            >
-              <Icon className="size-3 shrink-0" />
-              {label}
-            </button>
-          ))}
+        <div className="flex flex-col gap-2">
+          {impressionConfig.map(({ value, icon: Icon, label, selectedBg, selectedBorder, hoverClass, hoverText }) => {
+            const isSelected = impression === value
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setImpression(value)}
+                className={cn(
+                  'flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-all',
+                  isSelected ? '' : cn('border-gray-200 bg-white text-gray-500', hoverClass),
+                )}
+                style={isSelected ? {
+                  backgroundColor: selectedBg,
+                  borderColor: selectedBorder,
+                  color: '#ffffff',
+                } : { color: hoverText }}
+              >
+                <Icon className="size-5 shrink-0" />
+                {label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {/* ── Optional detailed ratings ── */}
       <button
         onClick={() => setShowDetails((p) => !p)}
-        className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground self-start"
+        className="flex items-center gap-1.5 self-start rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50"
+        style={{ borderColor: '#E5E5E5', color: '#737373' }}
       >
-        {showDetails ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-        {showDetails ? 'Hide details' : 'Add detailed ratings'}
+        {showDetails ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+        {showDetails ? 'Details ausblenden' : 'Detailbewertung hinzufügen'}
       </button>
 
       {showDetails && (
-        <div className="flex flex-col gap-2.5 border-t pt-2.5">
-          {/* Core ratings */}
-          <MetricRating
-            label={compact ? 'Compreh.' : 'Comprehensibility'}
-            description="Do you understand the explanation?"
-            value={comprehensibility}
-            onChange={setComprehensibility}
-            compact={compact}
-          />
-          <MetricRating
-            label="Relevance"
-            description="Is this relevant & actionable?"
-            value={relevance}
-            onChange={setRelevance}
-            compact={compact}
-          />
-          <MetricRating
-            label={compact ? 'Plausibil.' : 'Plausibility'}
-            description="Does this sound sensible and well-reasoned?"
-            value={plausibility}
-            onChange={setPlausibility}
-            compact={compact}
-          />
+        <div className="flex flex-col gap-3 rounded-xl border p-3" style={{ borderColor: '#E5E5E5', backgroundColor: '#FAFAFA' }}>
+          <MetricRating label="Verständlichkeit" description="Ist die Erklärung klar?" value={comprehensibility} onChange={setComprehensibility} />
+          <MetricRating label="Relevanz"          description="Ist es relevant & umsetzbar?" value={relevance}          onChange={setRelevance} />
+          <MetricRating label="Plausibilität"     description="Klingt es schlüssig?"         value={plausibility}      onChange={setPlausibility} />
 
-          {/* Detailed sub-ratings */}
-          <div className="flex flex-col gap-2 border-t pt-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Detailed
-            </p>
-            <MetricRating
-              label="Title"
-              description="Is the title clear and fitting?"
-              value={ratingTitle}
-              onChange={setRatingTitle}
-              compact={compact}
-            />
-            <MetricRating
-              label={compact ? 'Descr.' : 'Description'}
-              description="Is the description clear and complete?"
-              value={ratingDescription}
-              onChange={setRatingDescription}
-              compact={compact}
-            />
-            {itemType === 'insight' && (
-              <MetricRating
-                label="Hypotheses"
-                description="Are the hypotheses plausible?"
-                value={ratingHypotheses}
-                onChange={setRatingHypotheses}
-                compact={compact}
-              />
-            )}
-            {itemType === 'measure' && (
-              <>
-                <MetricRating
-                  label="Reasoning"
-                  description="Is the reasoning sound?"
-                  value={ratingReasoning}
-                  onChange={setRatingReasoning}
-                  compact={compact}
-                />
-                <MetricRating
-                  label="Questions"
-                  description="Are the questions relevant?"
-                  value={ratingQuestions}
-                  onChange={setRatingQuestions}
-                  compact={compact}
-                />
-              </>
-            )}
+          <div className="border-t pt-3" style={{ borderColor: '#E5E5E5' }}>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#AEAEAE' }}>Details</p>
+            <div className="flex flex-col gap-2.5">
+              <MetricRating label="Titel"       description="Ist der Titel treffend?"           value={ratingTitle}       onChange={setRatingTitle} />
+              <MetricRating label="Beschreibung" description="Ist die Beschreibung vollständig?" value={ratingDescription} onChange={setRatingDescription} />
+              {itemType === 'insight' && (
+                <MetricRating label="Hypothesen" description="Sind die Hypothesen plausibel?" value={ratingHypotheses} onChange={setRatingHypotheses} />
+              )}
+              {itemType === 'measure' && (
+                <>
+                  <MetricRating label="Begründung" description="Ist die Begründung nachvollziehbar?" value={ratingReasoning} onChange={setRatingReasoning} />
+                  <MetricRating label="Fragen"      description="Sind die Fragen relevant?"           value={ratingQuestions} onChange={setRatingQuestions} />
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {error && <p className="text-[11px] text-destructive">{error}</p>}
+      {error && <p className="text-xs" style={{ color: '#dc2626' }}>{error}</p>}
 
-      <Button
-        size="sm"
+      {/* ── Submit ── */}
+      <button
         onClick={handleSubmit}
         disabled={!impression || loading}
-        className="w-full"
+        className="w-full rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40"
+        style={{
+          backgroundColor: impression ? '#1A2FEE' : '#E5E5E5',
+          color: impression ? '#ffffff' : '#AEAEAE',
+        }}
       >
-        {loading ? 'Submitting…' : 'Submit'}
-      </Button>
+        {loading ? 'Wird gespeichert…' : 'Bewertung absenden'}
+      </button>
+
     </div>
   )
 }
