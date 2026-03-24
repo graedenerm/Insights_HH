@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { EvaluatorProvider } from '@/lib/evaluator-context'
+import { PasswordGate } from '@/components/password-gate'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -22,11 +23,13 @@ export default function RootLayout({
   return (
     <html lang="de" className={inter.variable}>
       <body className="antialiased">
-        <EvaluatorProvider>
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
-        </EvaluatorProvider>
+        <PasswordGate>
+          <EvaluatorProvider>
+            <TooltipProvider>
+              {children}
+            </TooltipProvider>
+          </EvaluatorProvider>
+        </PasswordGate>
       </body>
     </html>
   )
