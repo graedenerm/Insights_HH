@@ -63,7 +63,6 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
                 borderColor: error ? '#ef4444' : 'rgba(255,255,255,0.2)',
                 color: '#ffffff',
                 caretColor: '#ffffff',
-                focusRingColor: '#1A2FEE',
               }}
             />
             {error && (
