@@ -4,9 +4,10 @@ import type { Measure, Evaluation } from '@/lib/types'
 interface MeasureListProps {
   measures: (Measure & { evaluations: Evaluation[] })[]
   onEvaluationSubmitted?: () => void
+  compact?: boolean
 }
 
-export function MeasureList({ measures, onEvaluationSubmitted }: MeasureListProps) {
+export function MeasureList({ measures, onEvaluationSubmitted, compact }: MeasureListProps) {
   if (measures.length === 0) {
     return (
       <p className="text-sm text-muted-foreground italic">
@@ -16,13 +17,14 @@ export function MeasureList({ measures, onEvaluationSubmitted }: MeasureListProp
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className={compact ? 'flex flex-col' : 'flex flex-col gap-3'}>
       {measures.map((measure, i) => (
         <MeasureCard
           key={measure.id}
           measure={measure}
           index={i}
           onEvaluationSubmitted={onEvaluationSubmitted}
+          compact={compact}
         />
       ))}
     </div>

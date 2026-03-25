@@ -1,6 +1,7 @@
 'use client'
 
-import { Zap, User } from 'lucide-react'
+import Image from 'next/image'
+import { User } from 'lucide-react'
 import { useEvaluator } from '@/lib/evaluator-context'
 
 export function CustomerHeader() {
@@ -10,10 +11,16 @@ export function CustomerHeader() {
     <header className="sticky top-0 z-50 border-b shadow-sm" style={{ backgroundColor: '#00095B', borderColor: 'rgba(26,47,238,0.25)' }}>
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
         {/* Branding */}
-        <div className="flex items-center gap-3">
-          <div className="flex size-8 items-center justify-center rounded-lg" style={{ backgroundColor: 'rgba(26,47,238,0.4)' }}>
-            <Zap className="size-4 text-white" />
-          </div>
+        <div className="flex items-center gap-4">
+          <Image
+            src="/ecoplanet-logo.png"
+            alt="ecoplanet"
+            width={120}
+            height={36}
+            className="object-contain"
+            priority
+          />
+          <div className="h-7 w-px" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
           <div>
             <p className="text-sm font-bold leading-tight text-white">
               Heinrich Huhn Deutschland GmbH

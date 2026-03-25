@@ -157,16 +157,37 @@ export function InsightCard({ insight, index, onEvaluationSubmitted }: InsightCa
                   <span className="text-[11px]">{locationLabel}</span>
                 </div>
               )}
+
+              {/* "Insight öffnen" CTA — only when collapsed */}
+              {!expanded && (
+                <div className="mt-3 flex items-center gap-1.5 self-start rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors"
+                  style={{ borderColor: '#1A2FEE', color: '#1A2FEE', backgroundColor: 'rgba(26,47,238,0.04)' }}
+                >
+                  <ChevronDown className="size-3.5" />
+                  Insight öffnen
+                </div>
+              )}
             </div>
 
-            {/* Chevron + eval summary */}
+            {/* Chevron (collapse indicator when expanded) + eval summary */}
             <div className="shrink-0 flex flex-col items-end gap-2">
               <ImpressionPills evals={insight.evaluations} />
-              {expanded
-                ? <ChevronUp className="size-4" style={{ color: '#AEAEAE' }} />
-                : <ChevronDown className="size-4" style={{ color: '#AEAEAE' }} />}
+              {expanded && <ChevronUp className="size-4" style={{ color: '#AEAEAE' }} />}
             </div>
           </button>
+
+          {/* Always-visible compact measures strip (collapsed state) */}
+          {insight.measures.length > 0 && !expanded && (
+            <div className="border-t px-5 py-3" style={{ borderColor: '#F0F0F0', backgroundColor: '#FAFCFF' }}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Wrench className="size-3" style={{ color: '#1A2FEE' }} />
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#1A2FEE' }}>
+                  Empfohlene Maßnahmen
+                </span>
+              </div>
+              <MeasureList measures={insight.measures} onEvaluationSubmitted={onEvaluationSubmitted} compact />
+            </div>
+          )}
 
           {/* Expandable detail */}
           <AnimatePresence>
@@ -238,13 +259,13 @@ export function InsightCard({ insight, index, onEvaluationSubmitted }: InsightCa
                     </div>
                   )}
 
-                  {/* Linked measures */}
+                  {/* Linked measures (full cards) */}
                   {insight.measures.length > 0 && (
                     <div className="border-t pt-4" style={{ borderColor: '#F0F0F0' }}>
                       <div className="flex items-center gap-1.5 mb-3">
                         <Wrench className="size-3.5" style={{ color: '#1A2FEE' }} />
                         <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#1A2FEE' }}>
-                          Verknüpfte Maßnahmen ({insight.measures.length})
+                          Empfohlene Maßnahmen ({insight.measures.length})
                         </span>
                       </div>
                       <MeasureList measures={insight.measures} onEvaluationSubmitted={onEvaluationSubmitted} />

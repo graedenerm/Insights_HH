@@ -253,13 +253,49 @@ interface MeasureCardProps {
   measure: Measure & { evaluations: Evaluation[] }
   index: number
   onEvaluationSubmitted?: () => void
+  compact?: boolean
 }
 
-export function MeasureCard({ measure, index, onEvaluationSubmitted }: MeasureCardProps) {
+export function MeasureCard({ measure, index, onEvaluationSubmitted, compact }: MeasureCardProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const effort = effortStyle(measure.effort_level)
   const catLabel = categoryLabel(measure.category)
   const { pos, neu, neg, total } = impressionSummary(measure.evaluations)
+
+  if (compact) {
+    return (
+      <>
+        <motion.button
+          initial={{ opacity: 0, x: -4 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.15, delay: index * 0.03 }}
+          onClick={() => setModalOpen(true)}
+          className="group flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors hover:bg-white"
+          style={{ color: '#00095B' }}
+        >
+          <Wrench className="size-3 shrink-0" style={{ color: '#1A2FEE' }} />
+          <span className="flex-1 min-w-0 truncate text-xs font-medium">{measure.title}</span>
+          {total > 0 && (
+            <div className="flex items-center gap-1 shrink-0">
+              {pos > 0 && <span className="flex items-center gap-0.5 text-[10px] font-medium" style={{ color: '#059669' }}><ThumbsUp className="size-2.5" />{pos}</span>}
+              {neu > 0 && <span className="flex items-center gap-0.5 text-[10px] font-medium" style={{ color: '#737373' }}><Minus className="size-2.5" />{neu}</span>}
+              {neg > 0 && <span className="flex items-center gap-0.5 text-[10px] font-medium" style={{ color: '#dc2626' }}><ThumbsDown className="size-2.5" />{neg}</span>}
+            </div>
+          )}
+          <ChevronRight className="size-3 shrink-0 transition-transform group-hover:translate-x-0.5" style={{ color: '#AEAEAE' }} />
+        </motion.button>
+        <AnimatePresence>
+          {modalOpen && (
+            <MeasureDetailModal
+              measure={measure}
+              onClose={() => setModalOpen(false)}
+              onEvaluationSubmitted={() => { setModalOpen(false); onEvaluationSubmitted?.() }}
+            />
+          )}
+        </AnimatePresence>
+      </>
+    )
+  }
 
   return (
     <>
