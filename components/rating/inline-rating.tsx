@@ -69,6 +69,8 @@ export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps)
   const [ratingReasoning, setRatingReasoning]     = useState<MetricValue | null>(null)
   const [ratingQuestions, setRatingQuestions]     = useState<MetricValue | null>(null)
 
+  const [comment, setComment] = useState('')
+
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailSuccess, setDetailSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -78,6 +80,7 @@ export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps)
     setComprehensibility(null); setRelevance(null); setPlausibility(null)
     setRatingTitle(null); setRatingDescription(null); setRatingHypotheses(null)
     setRatingReasoning(null); setRatingQuestions(null)
+    setComment('')
     setDetailSuccess(false); setError(null)
   }
 
@@ -120,6 +123,7 @@ export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps)
       ratingHypotheses: itemType === 'insight' ? toDb(ratingHypotheses) : undefined,
       ratingReasoning:  itemType === 'measure' ? toDb(ratingReasoning)  : undefined,
       ratingQuestions:  itemType === 'measure' ? toDb(ratingQuestions)  : undefined,
+      notes: comment || undefined,
     })
     setDetailLoading(false)
     if (result.success) { setDetailSuccess(true); onSuccess?.() }
@@ -217,6 +221,32 @@ export function InlineRating({ itemType, itemId, onSuccess }: InlineRatingProps)
                     </>
                   )}
                 </div>
+              </div>
+
+              {/* Comment field */}
+              <div className="border-t pt-3" style={{ borderColor: '#E5E5E5' }}>
+                <label
+                  htmlFor={`comment-${itemId}`}
+                  className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider"
+                  style={{ color: '#AEAEAE' }}
+                >
+                  Kommentar (optional)
+                </label>
+                <textarea
+                  id={`comment-${itemId}`}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Ihre Anmerkungen, Fragen oder weiteres Feedback…"
+                  rows={3}
+                  className="w-full resize-none rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-gray-300"
+                  style={{
+                    borderColor: '#E5E5E5',
+                    color: '#00095B',
+                    backgroundColor: '#ffffff',
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#1A2FEE' }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#E5E5E5' }}
+                />
               </div>
 
               {error && <p className="text-xs" style={{ color: '#dc2626' }}>{error}</p>}
